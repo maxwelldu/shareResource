@@ -1,0 +1,121 @@
+MySQL 主从实验
+
+平台:Mac
+工具:Vagrant
+系统:CentOS6.5
+实验目的:MySQL主从
+
+主库服务器IP: 192.168.31.178
+从库服务器IP: 192.168.31.176
+
+实现思路:
+  主库打开binlog, 设置server-id, 给从库创建一个帐号用来同步
+  从库配置主库的ip, 端口, 用户名密码, 日志名和位置, 然后开始slave;
+
+  详细步骤:
+  1. 主库打开bin-log, 设置server-id
+  2. 主库建立同步时的用户
+  3. 重启服务, 查看master状态并记录上
+
+  4. 导出数据, 拷贝到从库
+
+  5. 从库导入数据
+  6. 设置server-id
+  7. 重启服务
+  8. 设置主库信息
+  9. 开启slave
+  10. 查看从库状态
+
+先打包一个安装了mysql服务的CentOS6.5的box 名字叫sentos6.5mysql
+mkdir mysql_master_slave
+cd mysql_master_slave
+vagrant init sentos6.5mysql
+vim Vagrantfile
+
+定义一主一从
+  config.vm.define "mysqlmaster" do |mysqlmaster|
+    mysqlmaster.vm.network "public_network"
+    mysqlmaster.vm.hostname = "mysqlmaster"
+  end
+
+  config.vm.define "mysqlslave1" do |mysqlslave1|
+    mysqlslave1.vm.network "public_network"
+    mysqlslave1.vm.hostname = "mysqlslave1"
+  end
+
+vagrant up
+
+配置主库
+vagrant ssh mysqlmaster
+
+sudo su -
+vi /etc/my.cnf
+在mysqld模块下面添加这两行
+
+log-bin=mysql-bin 
+server-id=1
+
+mysql -uroot -proot
+
+grant replication slave on *.* to 'rep'@'192.168.31.176' identified by 'admin123';
+
+flush privileges;
+
+exit;
+
+service mysqld restart
+
+mysql -uroot -proot
+
+show master status; 
+记录下File是mysql-bin.000001
+Position 是 106
+
+
+
+导出数据
+mysqldump -uroot -proot -A -B -x --events --master-data=2 > /var/rep.sql
+
+
+拷贝到从库服务器
+scp /var/rep.sql vagrant@192.168.31.176:/vagrant
+
+从库配置
+
+vagrant ssh mysqlslave1
+sudo su -
+
+导入数据
+mysql -uroot -proot < /vagrant/rep.sql
+
+设置server-id
+vi /etc/my.cnf
+server-id=2
+
+service mysqld restart
+
+mysql -uroot -proot
+
+CHANGE MASTER TO 
+MASTER_HOST='192.168.31.178',
+MASTER_PORT=3306,
+MASTER_USER='rep',
+MASTER_PASSWORD='admin123',
+MASTER_LOG_FILE='mysql-bin.000001', 
+MASTER_LOG_POS=106;
+
+start slave;
+
+show slave status\G;
+
+
+测试
+在主库 create database maxwelldu;
+在从库 show databases; 
+
+查看到有则主主从配置ok
+
+相关链接:
+http://blog.csdn.net/hguisu/article/details/7325124
+http://www.cnblogs.com/zgx/archive/2011/09/13/2174823.html
+http://www.cnblogs.com/lben/archive/2012/11/19/2777632.html
