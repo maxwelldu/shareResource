@@ -1,0 +1,182 @@
+环境Centos6.4
+四台虚拟机
+192.168.1.103	负载均衡器		安装keepalived和安装haproxy 		master
+192.168.1.104	负载均衡器		安装keepalived和安装haproxy 		slave
+192.168.1.110	提供webserver	为做测试只安装nginx或者apache即可
+192.168.1.111	提供webserver	为做测试只安装nginx或者apache即可
+
+
+安装keepalived
+
+1、下载 keepalived
+
+wget http://www.keepalived.org/software/keepalived-1.2.13.tar.gz
+
+tar -zxvf keepalived-1.2.13.tar.gz
+
+cd keepalived-1.2.13
+
+./configure
+
+configure: error: 
+  !!! OpenSSL is not properly installed on your system. !!!
+  !!! Can not include OpenSSL headers files.            !!!
+  
+yum install -y libnl-devel  libnl
+yum install -y openssl openssl-devel
+
+./configure   
+
+make  && make install
+
+cp /usr/local/sbin/keepalived  /usr/sbin/
+cp /usr/local/etc/sysconfig/keepalived /etc/sysconfig/
+cp /usr/local/etc/rc.d/init.d/keepalived  /etc/init.d/
+mkdir /etc/keepalived
+
+
+配置keepalived.conf ---->  master 和 slave 的配置基本以不同 需要修改的地方 请参照注释的地方
+
+ ! Configuration File for keepalived
+   
+   global_defs {
+           notification_email {
+                   923332947@qq.com
+           }
+           notification_email_from phpinside@qq.com
+           smtp_server smtp.qq.com
+           smtp_connect_timeout 30
+          router_id LVS_DEVEL
+  }
+  
+  vrrp_instance VI_1 {
+          state MASTER    #备份服务器上将MASTER改为BACKUP
+          interface eth2  #该处每个机器可能不同 ip addr 查看选择相应的
+          virtual_router_id 51
+          mcast_src_ip  192.168.1.103  #selfip
+          priority 100    # 备份服务上将100改为90
+          advert_int 1
+          authentication {
+                  auth_type PASS
+                  auth_pass 1111
+          }
+          virtual_ipaddress {
+                  192.168.1.188    #(如果有多个VIP，继续换行填写.选定vip之前 ping 一下ping不通则可用)
+          }
+  }
+
+启动keepalived 
+service keepalived start   
+ip addr 查看运行状态
+
+
+下载haproxy
+wget http://www.haproxy.org/download/1.5/src/haproxy-1.5.12.tar.gz 
+
+tar -axvf haproxy-1.5.12.tar.gz
+
+cd haproxy-1.5.12
+
+1、编译
+make TARGET=linux26 PREFIX=/usr/local/haproxy
+
+2、安装
+make install PREFIX=/usr/local/haproxy
+
+
+配置 haproxy.conf
+
+cd /usr/local/haproxy && mkdir conf && cd conf && vim haproxy.conf
+
+master
+
+global
+	log 127.0.0.1 local0
+	maxconn 4096
+	chroot /usr/local/haproxy
+	uid 99
+	gid 99
+	daemon
+	nbproc 1
+	pidfile /usr/local/haproxy/haproxy.pid
+	#debug
+
+defaults 
+	log 127.0.0.1 local3
+	mode http
+	option httplog
+	option httpclose
+	option forwardfor
+	#option forwardfor header cral
+	option redispatch
+	retries 2
+	maxconn 2000
+	#balance source
+	balance roundrobin # static-rr  leastconn first source
+	stats uri /haproxy-stats
+	stats auth admin:123456
+	timeout connect 5000
+	timeout client 50000
+	timeout server 50000
+
+listen web_proxy    192.168.1.188:80
+	   server web1  192.168.1.110:80
+	   server web2  192.168.1.111:80
+	   
+slave 
+	
+global
+	log 127.0.0.1 local0
+	maxconn 4096
+	chroot /usr/local/haproxy
+	uid 99
+	gid 99
+	daemon
+	nbproc 1
+	pidfile /usr/local/haproxy/haproxy.pid
+	#debug
+
+defaults 
+	log 127.0.0.1 local3
+	mode http
+	option httplog
+	option httpclose
+	option forwardfor
+	#option forwardfor header cral
+	option redispatch
+	retries 2
+	maxconn 2000
+	#balance source
+	balance roundrobin # static-rr  leastconn first source
+	stats uri /haproxy-stats
+	stats auth admin:123456
+	timeout connect 5000
+	timeout client 50000
+	timeout server 50000
+
+listen web_proxy    0.0.0.0:80
+	   server web1  192.168.1.110:80
+	   server web2  192.168.1.111:80
+
+启动
+
+/usr/local/haproxy/sbin/haproxy -f   /usr/local/haproxy/conf/haproxy.cfg
+
+启动webserver服务器192.168.1.110,192.168.1.111 nginx
+
+访问 192.168.1.188
+
+如果出现 192.168.1.110	192.168.1.111 轮询提供服务则说明haproxy安装成功
+
+将192.168.1.103 挂起,查看ip addr 192.168.1.104 如果看到vip已绑定 继续访问192.168.1.188
+
+
+192.168.1.110	192.168.1.111 轮询提供服务,keepalived安装成功
+
+
+
+
+
+
+
+
