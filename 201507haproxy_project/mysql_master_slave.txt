@@ -33,13 +33,13 @@ vagrant init sentos6.5mysql
 vim Vagrantfile
 
 定义一主一从
-  config.vm.define "mysqlmaster" do |mysqlmaster|
-    mysqlmaster.vm.network "public_network"
+ config.vm.define "mysqlmaster" do |mysqlmaster|
+    mysqlmaster.vm.network "public_network", ip:"192.168.31.178"
     mysqlmaster.vm.hostname = "mysqlmaster"
   end
 
   config.vm.define "mysqlslave1" do |mysqlslave1|
-    mysqlslave1.vm.network "public_network"
+    mysqlslave1.vm.network "public_network", ip:"192.168.31.176"
     mysqlslave1.vm.hostname = "mysqlslave1"
   end
 
