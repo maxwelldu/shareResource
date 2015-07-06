@@ -1,0 +1,91 @@
+主从同步原理以及配置步骤
+
+1.开启 master mysql 的bin-log日志,
+2.创建授权同步账户,重启mysql
+3.配置 slave mysql 配置文件my.cnf 修改server-id,确保与master不同
+4.登录 slave mysql 配置master.info ;执行 CHANGE MASTER TO......语句,当执行改语句时,会将这些信息存入一个叫master.info的文件中
+5.start slave 开启主从同步
+
+	5.1 当执行这条命令 mysql进程会产生2个线程 IO线程 和 SQL线程
+	5.2 IO线程向 master 请求并 读取 bin-log 日志,将读取的数据存入 slave   的relay-log日志(中继日志)中,并更新master.info中的MASTER_LOG_FILE,MASTER_LOG_POS信息,再次请求 master mysql时会将这两个值附带发送给master,一直循环这个过程
+	5.3 SQL线程负责读取 relay-log日志,并将日志中的SQL写入到 slave mysql中 2个线程之间互不通信
+
+
+环境Centos6.4
+mysql5.5.21 编译安装 过程不再赘述
+两台虚拟机
+
+192.168.0.103	master
+192.168.0.04	slave
+
+
+1.修改master mysql /etc/my.cnf
+
+#在mysqld模块中加入开启bin-log日志必须开启,否则无法启动mysql ,记录数据的更新操作 (要加载mysqld模块下,否则会报错)
+log-bin=mysql-bin 
+#master和slave保持不同
+server-id=1 
+#设置不需要同步的数据库
+binlog-ignore-db=mysql
+binlog-ignore-db=test
+binlog-ignore-db=information_schema
+
+#设置需要同步的数据库,如果是多个在继续在下面添加
+binlog-do-db=sijiaomao
+
+保存退出 重启mysql
+进入mysql  执行命令 show variables like "log_bin"
+如果现实 log_bin On 则表示 bin-log开启成功
+
+2.master 创建mysql同步所用用户
+
+grant replication slave on *.* to 'rep'@'192.168.233.136' identified by 'admin';
+
+flush privileges;
+
+3.同步之前的准备工作
+
+主从同步之前先同步原有的数据库
+
+mysqldump -uroot -padmin -A -B -X --events --master-data=2 | /var/rep.sql
+
+将导出的数据导入到从库
+
+4.配置从库my.cnf
+
+修改 servier-id
+
+如果从库需要作为其他数据库的主库,则从库也应该开bin-log-bin,添加log_slave_updates=1,重启mysql,
+
+登录从库mysql,执行命令
+
+CHANGE MASTER TO 
+MASTER_HOST='192.168.233.132', #主库ip地址
+MASTER_PORT=3306, #主库端口
+MASTER_USER='rep', #同步账户用户名
+MASTER_PASSWORD='admin', #同步账户密码
+MASTER_LOG_FILE='mysql-bin.000007', 
+MASTER_LOG_POS=107;
+
+MASTER_LOG_FILE 和 MASTER_LOG_POS 可以通过查看rep.mysql填写相应的值,也可以在主库上 执行命令show master status\G;查看,填写之前
+确认两处的值相同
+
+从库mysql 执行命令start slave; 开启
+
+show slave status\G 查看运行状态
+
+Slave_IO_Running: Yes
+Slave_SQL_Running: Yes
+
+
+如果上面两个线程开启,则表示主从同步配置成功,可以在主库上执行一些写操作,看是否会同步到从库
+
+
+这是在网上看到的一篇写的比较详细的关于主从复制log:http://www.cnblogs.com/lben/archive/2012/11/19/2777632.html.仅供参考.
+
+
+
+
+
+
+
