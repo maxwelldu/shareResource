@@ -50,31 +50,44 @@ vagrant ssh mysqlmaster
 
 sudo su -
 vi /etc/my.cnf
-在mysqld模块下面添加这两行
+在mysqld模块下面添加打开binlog, 设置server-id
 
 log-bin=mysql-bin 
+#打开binlog
 server-id=1
+#确保id是唯一的即可
 
 mysql -uroot -proot
 
 grant replication slave on *.* to 'rep'@'192.168.31.176' identified by 'admin123';
+创建一个授权slave用户rep, 密码为admin123, ip允许来自192.168.31.176, 10.0.0.% 表示局域网
 
 flush privileges;
+刷新mysql的系统权限相关表
 
 exit;
 
 service mysqld restart
 
+检查是否开启成功
+查看数据目录下面有没有binlog日志文件, 有则生效了, 有mysql-bin.index 和 000001 
+或者到里面去查看 show variables like “log_bin”;
+看到是on则开了
+
 mysql -uroot -proot
 
 show master status; 
-记录下File是mysql-bin.000001
+记录两个值, 在从库设置同步的时候需要使用
+File是mysql-bin.000001
 Position 是 106
 
 
 
 导出数据
 mysqldump -uroot -proot -A -B -x --events --master-data=2 > /var/rep.sql
+-x 是自动锁
+导出完了打开 /var/rep.sql
+搜索MASTER看一下MASTER_LOG_FILE 和 master_log_pos和之前show master status 是否一致
 
 
 拷贝到从库服务器
@@ -85,12 +98,13 @@ scp /var/rep.sql vagrant@192.168.31.176:/vagrant
 vagrant ssh mysqlslave1
 sudo su -
 
-导入数据
+从库导入数据
 mysql -uroot -proot < /vagrant/rep.sql
 
 设置server-id
 vi /etc/my.cnf
 server-id=2
+#id唯一即可
 
 service mysqld restart
 
@@ -108,6 +122,17 @@ start slave;
 
 show slave status\G;
 
+Slave_IO_Running: Yes
+Slave_SQL_Running: Yes
+
+
+看到io和sql都为yes则成功了
+如果上面两个线程开启,则表示主从同步配置成功,可以在主库上执行一些写操作,看是否会同步到从库
+
+同步成功后会生成masterinfo, 在my.cnf里面找到data目录是在/var/lib/mysql里面
+ls /var/lib/mysql 看到有一个master.info文件
+cat /var/lib/mysql/master.info 可以看到设置的主库信息
+
 
 测试
 在主库 create database maxwelldu;
@@ -119,3 +144,23 @@ show slave status\G;
 http://blog.csdn.net/hguisu/article/details/7325124
 http://www.cnblogs.com/zgx/archive/2011/09/13/2174823.html
 http://www.cnblogs.com/lben/archive/2012/11/19/2777632.html
+
+
+相关原理文本记录:
+
+主库必须开启bin-log
+从库找主库同步, change master  主机 用户 密码 端口 log_file log_pos
+开始同步
+
+从库的io线程向主库的io发送请求, 主库io验证用户是否合法, 从库连接的时候会告诉主库, 我要从你的哪个文件, 哪个点开始发binlog, 发多少, 一直发到最新的, 从库收到log日志, 将log写到中继日志, 然后会更新masterinfo 的位置点, 然后如此循环
+
+sql线程实时的将中继log读取然后往数据库里面写, 只要发现中继日志有变化就读取然后写入
+
+同步之前要先把主库的数据同步到从库上
+
+在开启同步之前要确定在同步的位置以前, 从库是要有完整数据, 是一致的
+
+在开启之前要在主库建立专门用于从库同步的帐号
+主库要打开binlog开关
+
+从库打开开关的过程实际上就是让io和sql都工作
