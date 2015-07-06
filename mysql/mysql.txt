@@ -16,7 +16,7 @@ mysql5.5.21 编译安装 过程不再赘述
 两台虚拟机
 
 192.168.0.103	master
-192.168.0.04	slave
+192.168.0.104	slave
 
 
 1.修改master mysql /etc/my.cnf
@@ -47,7 +47,7 @@ flush privileges;
 
 主从同步之前先同步原有的数据库
 
-mysqldump -uroot -padmin -A -B -X --events --master-data=2 | /var/rep.sql
+mysqldump -uroot -padmin -A -B -X --events --master-data=2 > /var/rep.sql
 
 将导出的数据导入到从库
 
