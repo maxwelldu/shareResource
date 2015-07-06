@@ -27,6 +27,35 @@ MySQL 主从实验
   10. 查看从库状态
 
 先打包一个安装了mysql服务的CentOS6.5的box 名字叫sentos6.5mysql
+yum安装mysql
+yum -y install mysql-server
+
+设置开机启动
+chkconfig mysqld on
+
+启动mysql服务
+service mysqld start
+
+设置mysql的root用户密码
+mysql -u root
+select user,host,password from mysql.user;
+set password for root@localhost=password('root');
+exit
+
+用新密码登录
+mysql -u root -p
+
+开放远程登录权限
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'root' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
+
+最后打包命令
+sudo rm -rf /etc/udev/rules.d/70-persistent-net.rules
+vagrant package --output sentos6.5mysql.box
+vagrant box add --name sentos6.5mysql sentos6.5mysql.box
+
+下面基于这个box开始做实验
+
 mkdir mysql_master_slave
 cd mysql_master_slave
 vagrant init sentos6.5mysql
