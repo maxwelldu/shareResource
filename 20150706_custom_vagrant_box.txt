@@ -6,6 +6,7 @@ memcache 及扩展和phpmemcacheadmin
 redis及扩展和phpRedisAdmin
 mongodb及扩展和moadmin
 
+
 vagrant init sentos6.5
 
 vagrant up
@@ -14,7 +15,7 @@ sudo su -
 
 yum -y install vim gcc gcc+ gcc-c++
 
-mysql
+#mysql安装部分
 
 sudo su -
 yum search mysql
@@ -46,18 +47,23 @@ password=root
 mysql -A 
 
 
-php 
+#php 安装部分
 
 yum search php
 yum -y install php php-gd php-fpm php-pdo
 /etc/init.d/php-fpm start
 chkconfig php-fpm on
 vim /etc/php-fpm.d/www.conf
+
+#修改用户和用户组
+```
 user = vagrant
 group = vagrant
+```
 
 php -v
-发现php版本是5.3, 下面升级到5.4
+
+#发现php版本是5.3, 下面升级到5.4
 
 
 yum remove php-common
@@ -66,7 +72,7 @@ yum -y install php54w php54w-fpm php54w-gd php54w-intl php54w-mbstring php54w-mc
 service php-fpm restart
 
 
-nginx
+#nginx 安装部分
 
 yum search nginx
 yum -y install nginx
@@ -110,25 +116,31 @@ phpinfo();
 chkconfig nginx on
 
 vim /etc/php-fpm.d/www.conf
+#修改用户和用户组
+```
 user = vagrant
 group = vagrant
+```
 
 service php-fpm restart
 chkconfig php-fpm on
 
 
-phpMyAdmin 
+#phpMyAdmin  安装部分
 
 wget --no-check-certificate https://files.phpmyadmin.net/phpMyAdmin/4.4.11/phpMyAdmin-4.4.11-all-languages.zip
 yum -y install unzip
 unzip phpMyAdmin-4.4.11-all-languages.zip
 mv phpMyAdmin-4.4.11-all-languages phpMyAdmin
-访问地址: http://192.168.31.99/phpMyAdmin
 
-发现session不能正常开启, 查看phpinfo, 找到session位置, 修改权限, 由于phpMyAdmin需要MySQL5.5.0以上, 再升级MySQL
+#访问地址: http://192.168.31.99/phpMyAdmin
+
+#发现session不能正常开启, 查看phpinfo, 找到session位置, 修改权限, 由于phpMyAdmin需要MySQL5.5.0以上, 再升级MySQL
+#修改目录用户和用户组
 chown vagrant:vagrant /var/lib/php/session
 
-下载最新的
+#下载最新的
+
 http://dev.mysql.com/downloads/repo/yum/
 
 yum localinstall mysql-community-release-el6-5.noarch.rpm
@@ -137,7 +149,7 @@ yum install mysql-community-server
 
 service mysqld restart
 
-启动的时候报错: Daemon failed to start.
+#启动的时候报错: Daemon failed to start.
 rm -rf /var/lib/mysql
 mysql_install_db --user=mysql --ldata=/var/lib/mysql
 
@@ -145,16 +157,15 @@ service mysqld restart
 
 service php-fpm restart
 
-可以了
-参考地址:
-http://blog.csdn.net/iefreer/article/details/38366575
-http://blog.csdn.net/lanxe/article/details/8108614
+#参考地址:
+#http://blog.csdn.net/iefreer/article/details/38366575
+#http://blog.csdn.net/lanxe/article/details/8108614
 
 mkdir software
 cd software
 
 
-memcached
+#memcached 安装部分
 
 yum -y install libevent-devel 
 wget http://www.memcached.org/files/memcached-1.4.24.tar.gz
@@ -176,7 +187,7 @@ service memcached start
 chkconfig memcached on
 
 
-memcache php扩展
+#memcache php扩展安装
 cd ~/software
 wget https://launchpad.net/libmemcached/1.0/1.0.4/+download/libmemcached-1.0.4.tar.gz 
 
@@ -200,13 +211,13 @@ make
 make install  
 
 Installing shared extensions:     /usr/lib64/php/modules/
-将上面的这个目录添加到php.ini中赋值给 extension_dir
+#将上面的这个目录添加到php.ini中赋值给 extension_dir
+#在最后一行添加上此扩展
 
-在最后一行添加上此扩展
 extension = memcached.so
 
 service php-fpm restart
-查看phpinfo是否有memcached扩展
+#查看phpinfo是否有memcached扩展
 
 vim /data/www/test_memcached.php
 <?php  
@@ -217,22 +228,22 @@ var_dump($m->get('username'));
 ?>  
 
 
-安装phpMemcacheAdmin
+#安装phpMemcacheAdmin
 https://github.com/hgschmie/phpmemcacheadmin
 
 yum -y install git
 cd /data/www/
 git clone https://github.com/hgschmie/phpmemcacheadmin.git
 
-以后可以这样访问: http://192.168.31.99/phpmemcacheadmin
+#以后可以这样访问: http://192.168.31.99/phpmemcacheadmin
 
 
 
-redis
+#redis 安装
 
-参考地址: 
-http://duchengjiu.iteye.com/blog/2224385
-http://blog.csdn.net/mlks_2008/article/details/19001595
+#参考地址: 
+#http://duchengjiu.iteye.com/blog/2224385
+#http://blog.csdn.net/mlks_2008/article/details/19001595
 
 yum -y install tcl
 cd ~/software
@@ -264,14 +275,14 @@ dir /var/redis/6379
 
 redis-server /etc/redis/6379.conf
 
-测试
+#测试
 redis-cli
 set name maxwelldu
 get name
 
 
 
-配置成开机启动, 制作init
+#配置成开机启动, 制作init
 vim /etc/init.d/redis
 ```
 #! /bin/sh
@@ -336,62 +347,66 @@ chkconfig redis on
 service redis stop
 service redis start
 
-测试
+#测试
 redis-cli
 set foo 123
 get foo
 
 
-redis php扩展
+#redis php扩展安装
 
 cd ~/software
 git clone https://github.com/phpredis/phpredis.git
-速度慢可先翻墙
+
+#速度慢可先翻墙
 
 cd phpredis
 phpize
 ./configure --with-php-config=/usr/bin/php-config
 make && make install
 vim /etc/php.ini
-添加
+#添加
 extension=redis.so
 service php-fpm restart
-查看phpinfo
+#查看phpinfo
 
-phpredisadmin安装
-参考地址: https://github.com/ErikDubbelboer/phpRedisAdmin
+#phpredisadmin安装
+
+#参考地址: https://github.com/ErikDubbelboer/phpRedisAdmin
 
 cd /data/www
 git clone https://github.com/ErikDubbelboer/phpRedisAdmin.git
 cd phpRedisAdmin
 git clone https://github.com/nrk/predis.git vendor
 
-访问地址: http://192.168.31.99/phpRedisAdmin/
+#访问地址: http://192.168.31.99/phpRedisAdmin/
 
+#mongodb 安装
 
-mongodb
-
-vim /etc/yum.repos.d/mongodb.repo
+vim /etc/yum.repos.d/mongodb.repo为
+```
 [mongodb]  
 name=MongoDB Repository  
 baseurl=http://downloads-distro.mongodb.org/repo/redhat/os/x86_64/  
 gpgcheck=0  
 enabled=1 
+```
 
 
 yum install mongodb-org
 service mongod start
-可以通过检查日志文件/var/log/mongodb/mongod.log的内容来判断mongod进程是否正常运行
+#可以通过检查日志文件/var/log/mongodb/mongod.log的内容来判断mongod进程是否正常运行
 
 chkconfig mongod on
 
-测试
+#测试
 mongo
 show dbs;
 db.version();
 
 
-mongodb php扩展
+#mongodb php扩展安装
+
 wget http://pecl.php.net/get/mongo-1.4.0.tgz &&  tar -zxvf mongo-1.4.0.tgz  && cd mongo-1.4.0
 phpize
 ./configure --with-php-config=/usr/bin/php-config
@@ -401,40 +416,44 @@ extension=mongo.so
 
 service php-fpm restart
 
-参考地址: http://m.blog.csdn.net/blog/yangligao_/43740335
+#参考地址: http://m.blog.csdn.net/blog/yangligao_/43740335
 
 
-管理工具 http://www.phpmoadmin.com/
+#管理工具 http://www.phpmoadmin.com/
 
-访问地址: http://192.168.31.99/moadmin.php
+#访问地址: http://192.168.31.99/moadmin.php
 
 
-最后通过composer安装一个yii2的高级模板看看
+#最后通过composer安装一个yii2的高级模板看看
+
 curl -sS https://getcomposer.org/installer | php
 mv composer.phar /usr/local/bin/composer
 
 composer global require "fxp/composer-asset-plugin:~1.0.0"
 composer create-project yiisoft/yii2-app-advanced advanced 2.0.4
 
-安装的时候需要输入一个github上面的token来跳过频率限制, 访问地址: ttps://github.com/settings/tokens/new?scopes=repo&description=Composer+on+localhost.localdomain+2015-07-07+0658
-生成一个token, 例如生成如下, 拷贝, 然后在命令行粘贴进去回车继续
-82c1db1885ebbd9c6b4dbff93ee578ed7d32ee0a
+#安装的时候需要输入一个github上面的token来跳过频率限制, 访问地址: ttps://github.com/settings/tokens/new?scopes=repo&description=Composer+on+localhost.localdomain+2015-07-07+0658
+#生成一个token, 例如生成如下, 拷贝, 然后在命令行粘贴进去回车继续
+#82c1db1885ebbd9c6b4dbff93ee578ed7d32ee0a
 
-安装结束后
+#安装结束后
+
 cd advanced
 ./init
 0
 
-访问前台: http://192.168.31.99/advanced/frontend/web/index.php
-访问后台: http://192.168.31.99/advanced/backend/web/index.php
+#访问前台: http://192.168.31.99/advanced/frontend/web/index.php
+#访问后台: http://192.168.31.99/advanced/backend/web/index.php
 
-准备打包
+
+#准备打包
+
 rm -rf /etc/udev/rules.d/70-persistent-net.rules
 vagrant package --output sentos65lnmprmm.box
 
-最后的压缩包在这个位置: /Users/michaeldu/Documents/vagrant/development/sentos65lnmprmm.box
+#最后的压缩包在这个位置: /Users/michaeldu/Documents/vagrant/development/sentos65lnmprmm.box
 
-到此box就制作结束了, 下面是使用
+#到此box就制作结束了, 下面是使用
 
 vagrant box add --name sentos65lnmprmm sentos65lnmprmm.box
 
@@ -478,5 +497,5 @@ server {
 
 service nginx restart
 
-本地配置host, sijiaomao.io指向192.168.31.98, 然后在www目录下面写index.php脚本, 在本地就可以通过sijiaomao.io/index.php进行访问了
+#本地配置host, sijiaomao.io指向192.168.31.98, 然后在www目录下面写index.php脚本, 在本地就可以通过sijiaomao.io/index.php进行访问了
 
