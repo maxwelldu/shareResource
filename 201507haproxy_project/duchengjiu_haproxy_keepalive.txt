@@ -37,6 +37,7 @@ vagrant up
 vagrant ssh web1
 sudo su -
 service iptables stop
+chkconfig iptables off
 yum -y install httpd
 service httpd start
 echo "web1 index" >> /var/www/html/index.html
@@ -50,6 +51,7 @@ echo "web1 index" >> /var/www/html/index.html
 vagrant ssh lb1 
 sudo su -
 service iptables stop
+chkconfig iptables off
 yum install -y libnl-devel  libnl  openssl openssl-devel
 wget http://www.keepalived.org/software/keepalived-1.2.13.tar.gz
 tar -zxvf keepalived-1.2.13.tar.gz
