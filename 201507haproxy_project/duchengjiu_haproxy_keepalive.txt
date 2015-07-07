@@ -1,0 +1,187 @@
+平台: Mac
+工具: Vagrant
+系统: CentOS6.5
+
+四台虚拟机
+192.168.31.103 负载均衡器   安装keepalived+haproxy  master
+192.168.31.104 负载均衡器   安装keepalived+haproxy  slave
+
+192.168.31.110 webserver1   安装apache
+192.168.31.111 webserver2   安装apache
+
+vagrant init base
+
+Vagrantfile配置
+
+ config.vm.define "web1" do |web1| #第一台web服务器
+      web1.vm.network "public_network", ip: "192.168.31.110"
+      web1.vm.hostname = "web1"
+  end  
+  config.vm.define "web2" do |web2| #第二台web服务器
+      web2.vm.network "public_network", ip: "192.168.31.111"
+      web2.vm.hostname = "web2"
+  end 
+  config.vm.define "lb1" do |lb1| #第一台负载均衡器
+      lb1.vm.network "public_network", ip: "192.168.31.103"
+      lb1.vm.hostname = "lb1"
+  end 
+  config.vm.define "lb2" do |lb2| #第二台负载均衡器
+      lb2.vm.network "public_network", ip: "192.168.31.104"
+      lb2.vm.hostname = "lb2"
+  end 
+
+
+vagrant up
+
+连接到两台web服务器, yum安装httpd, 启动服务, 添加一个首页, 访问测试
+vagrant ssh web1
+sudo su -
+service iptables stop
+yum -y install httpd
+service httpd start
+echo "web1 index" >> /var/www/html/index.html
+访问首页查看: http://192.168.31.110/
+
+第二台web服务器一样的操作
+
+
+开始lb1的keepalive安装与配置
+
+vagrant ssh lb1 
+sudo su -
+service iptables stop
+yum install -y libnl-devel  libnl  openssl openssl-devel
+wget http://www.keepalived.org/software/keepalived-1.2.13.tar.gz
+tar -zxvf keepalived-1.2.13.tar.gz
+cd keepalived-1.2.13
+./configure
+make && make install
+
+cp /usr/local/sbin/keepalived  /usr/sbin/
+cp /usr/local/etc/sysconfig/keepalived /etc/sysconfig/
+cp /usr/local/etc/rc.d/init.d/keepalived  /etc/init.d/
+mkdir /etc/keepalived
+
+vi /etc/keepalived/keepalived.conf
+```
+! Configuration File for keepalived
+   
+   global_defs {
+           notification_email {
+                   923332947@qq.com
+           }
+           notification_email_from phpinside@qq.com
+           smtp_server smtp.qq.com
+           smtp_connect_timeout 30
+          router_id LVS_DEVEL
+  }
+  
+  vrrp_instance VI_1 {
+          state MASTER    #备份服务器上将MASTER改为BACKUP
+          interface eth1  #该处每个机器可能不同 ip addr 查看选择相应的
+          virtual_router_id 51
+          mcast_src_ip  192.168.31.103  #selfip
+          priority 100    # 备份服务上将100改为90
+          advert_int 1
+          authentication {
+                  auth_type PASS
+                  auth_pass 1111
+          }
+          virtual_ipaddress {
+                  192.168.31.188    #(如果有多个VIP，继续换行填写.选定vip之前 ping 一下ping不通则可用)
+          }
+  }
+```
+
+service keepalived start
+
+
+从机一样操作, 配置文件需要按注释修改
+
+
+安装haproxy
+
+先翻墙
+wget http://www.haproxy.org/download/1.5/src/haproxy-1.5.12.tar.gz 
+tar -axvf haproxy-1.5.12.tar.gz
+cd haproxy-1.5.12
+make TARGET=linux26 PREFIX=/usr/local/haproxy
+make install PREFIX=/usr/local/haproxy
+cd /usr/local/haproxy && mkdir conf && cd conf && vi haproxy.conf
+
+主机配置
+```
+global
+	log 127.0.0.1 local0
+	maxconn 4096
+	chroot /usr/local/haproxy
+	uid 99
+	gid 99
+	daemon
+	nbproc 1
+	pidfile /usr/local/haproxy/haproxy.pid
+	#debug
+
+defaults 
+	log 127.0.0.1 local3
+	mode http
+	option httplog
+	option httpclose
+	option forwardfor
+	#option forwardfor header cral
+	option redispatch
+	retries 2
+	maxconn 2000
+	#balance source
+	balance roundrobin # static-rr  leastconn first source
+	stats uri /haproxy-stats
+	stats auth admin:123456
+	timeout connect 5000
+	timeout client 50000
+	timeout server 50000
+
+listen web_proxy    192.168.31.188:80
+	   server web1  192.168.31.110:80
+	   server web2  192.168.31.111:80
+```
+
+启动
+/usr/local/haproxy/sbin/haproxy -f   /usr/local/haproxy/conf/haproxy.conf
+
+从机配置
+```
+global
+	log 127.0.0.1 local0
+	maxconn 4096
+	chroot /usr/local/haproxy
+	uid 99
+	gid 99
+	daemon
+	nbproc 1
+	pidfile /usr/local/haproxy/haproxy.pid
+	#debug
+
+defaults 
+	log 127.0.0.1 local3
+	mode http
+	option httplog
+	option httpclose
+	option forwardfor
+	#option forwardfor header cral
+	option redispatch
+	retries 2
+	maxconn 2000
+	#balance source
+	balance roundrobin # static-rr  leastconn first source
+	stats uri /haproxy-stats
+	stats auth admin:123456
+	timeout connect 5000
+	timeout client 50000
+	timeout server 50000
+
+listen web_proxy    0.0.0.0:80
+	   server web1  192.168.31.110:80
+	   server web2  192.168.31.111:80
+```
+
+/usr/local/haproxy/sbin/haproxy -f   /usr/local/haproxy/conf/haproxy.conf
