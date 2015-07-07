@@ -23,7 +23,7 @@ https://github.com/maxwelldu/shareResource/blob/master/20150711_vagrant.md
 19.使用
 
 
-vagrant init sentos6.5
+vagrant init centos6.5
 
 vagrant up
 
@@ -467,20 +467,20 @@ cd advanced
 #准备打包
 
 rm -rf /etc/udev/rules.d/70-persistent-net.rules
-vagrant package --output sentos65lnmprmm.box
+vagrant package --output centos65lnmprmm.box
 
-#最后的压缩包在这个位置: /Users/michaeldu/Documents/vagrant/development/sentos65lnmprmm.box
+#最后的压缩包在这个位置: /Users/michaeldu/Documents/vagrant/development/centos65lnmprmm.box
 
 #到此box就制作结束了, 下面是使用
 
-vagrant box add --name sentos65lnmprmm sentos65lnmprmm.box
+vagrant box add --name centos65lnmprmm centos65lnmprmm.box
 
 vagrant box --list
 
 mkdir sijiaomao
 cd sijiaomao
 mkdir www
-vagrant init sentos65lnmprmm
+vagrant init centos65lnmprmm
 vim Vagrantfile
 config.vm.network "public_network", ip: "192.168.31.98"
  config.vm.synced_folder "./www", "/data/www/sijiaomao", create:true, owner:"vagrant", group:"vagrant"
