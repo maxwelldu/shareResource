@@ -33,12 +33,17 @@ service mysqld restart
 chkconfig --levels 35 iptables off
 chkconfig mysqld on
 
+#切换到家目录
+cd ~
 vi .my.cnf
+```
 [mysql] 
 user=root 
 password=root
+```
 
-mysql -A 登录
+#后面直接输入以下命令就登录MySQL了, 而不需要 mysql -uroot -proot
+mysql -A 
 
 
 php 
