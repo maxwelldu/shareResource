@@ -1,6 +1,8 @@
-本地LNMP+Redis+Memcache+Mongodb环境box制作
+本地LNMP+Redis+Memcache+Mongodb环境box制作, 整个过程开启VPN速度会比较快
 在本教程之前先要学会使用Vagrant
 https://github.com/maxwelldu/shareResource/blob/master/20150711_vagrant.md
+最后打包的box在百度网盘的地址: http://yun.baidu.com/s/1kTCclZh
+或者在atlas上面下载: https://atlas.hashicorp.com/maxwelldu/boxes/centos65lnmprmmyii2/versions/1/providers/virtualbox.box
 
 1.初始化一个镜像
 2.安装Vim7.2.411, Git1.7.1,gcc包, unzip
@@ -447,8 +449,10 @@ config.vm.network "public_network", ip: "192.168.31.98"
  config.vm.synced_folder "./www", "/data/www/maxwelldu", create:true, owner:"vagrant", group:"vagrant"
 ```
 vagrant up
-cd /etc/nginx/conf.d/
-cp default.conf maxwelldu.io.conf
+1
+vagrant ssh
+sudo su -
+vim /etc/nginx/conf.d/maxwelldu.io.conf
 ```
 server {
         listen  80;
@@ -474,6 +478,23 @@ server {
 ```
 service nginx restart
 #本地配置host, maxwelldu.io指向192.168.31.98, 然后在www目录下面写index.php脚本, 在本地就可以通过maxwelldu.io/index.php进行访问了
+vim /data/www/test_memcached.php
+vim /data/www/test_redis.php
+vim test_mongo.php
+service redis restart
+service mysqld restart
+#访问下面地址测试之前安装的都是否ok
+http://maxwelldu.io/
+http://192.168.31.98/phpinfo.php
+http://192.168.31.98/phpMyAdmin/index.php?token=d7bd14b9792a25f15df17b2cc497dbcf#PMAURL-0:index.php?db=&table=&server=1&target=&token=d7bd14b9792a25f15df17b2cc497dbcf
+http://192.168.31.98/test_memcached.php
+http://192.168.31.98/phpmemcacheadmin/
+http://192.168.31.98/test_redis.php
+http://192.168.31.98/phpRedisAdmin/?overview
+http://192.168.31.98/test_mongo.php
+http://192.168.31.98/moadmin.php
+http://192.168.31.98/advanced/frontend/web/
+http://192.168.31.98/advanced/backend/web/index.php?r=site%2Flogin
 
 #20.分享到网上
 #访问https://atlas.hashicorp.com/vagrant
