@@ -3,6 +3,8 @@
 https://github.com/maxwelldu/shareResource/blob/master/20150711_vagrant.md
 最后打包的box在百度网盘的地址: http://yun.baidu.com/s/1kTCclZh
 或者在atlas上面下载: https://atlas.hashicorp.com/maxwelldu/boxes/centos65lnmprmmyii2/versions/1/providers/virtualbox.box
+在网站上面搜索: centos65lnmprmmyii2
+或者在本地直接安装: vagrant init maxwelldu/centos65lnmprmmyii2;
 
 1.初始化一个镜像
 2.安装Vim7.2.411, Git1.7.1,gcc包, unzip
