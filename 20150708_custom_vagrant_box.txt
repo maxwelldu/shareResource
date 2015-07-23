@@ -7,7 +7,7 @@ https://github.com/maxwelldu/shareResource/blob/master/20150711_vagrant.md
 或者在本地直接安装: vagrant init maxwelldu/centos65lnmprmmyii2;
 
 1.初始化一个镜像
-2.安装Vim7.2.411, Git1.7.1,gcc包, unzip
+2.安装Vim7.2.411, Git1.7.1,gcc包, unzip, xdebug
 3.安装PHP5.4.42
 4.安装MySQL5.6.25
 5.安装Nginx1.8.0
@@ -25,9 +25,11 @@ https://github.com/maxwelldu/shareResource/blob/master/20150711_vagrant.md
 15.安装phpmoadmin管理工具
 16.安装Composer
 17.安装Yii2
-18.打包
-19.使用
-20.分享到网上
+18.安装xdebug
+19.安装PHPUnit
+20.打包
+21.使用
+22.分享到网上
 
 #1.初始化centos6.5镜像
 vagrant init centos6.5
@@ -430,7 +432,91 @@ yes
 #访问前台: http://192.168.31.133/advanced/frontend/web/index.php
 #访问后台: http://192.168.31.133/advanced/backend/web/index.php
 
-18.打包
+18.安装xdebug
+pecl install xdebug
+
+vim /etc/php.ini
+添加以下配置
+[Xdebug]
+zend_extension=/usr/lib64/php/modules/xdebug.so
+xdebug.auto_trace = on
+xdebug.auto_profile = on
+xdebug.collect_params = on
+xdebug.collect_return = on
+xdebug.profiler_enable = on
+xdebug.trace_output_dir = "/tmp"
+xdebug.profiler_output_dir = "/tmp"
+xdebug.dump.GET = *
+xdebug.dump.POST = *
+xdebug.dump.COOKIE = *
+xdebug.dump.SESSION = *
+xdebug.var_display_max_data = 4056
+xdebug.var_display_max_depth = 5
+
+重启服务 
+service php-fpm restart
+
+19.安装PHPUnit
+参考官网: https://phpunit.de/getting-started.html
+wget https://phar.phpunit.de/phpunit.phar
+chmod +x phpunit.phar
+sudo mv phpunit.phar /usr/local/bin/phpunit
+phpunit --version
+
+编写代码
+vim Money.php
+```
+<?php
+class Money
+{
+    private $amount;
+
+    public function __construct($amount)
+    {
+        $this->amount = $amount;
+    }
+
+    public function getAmount()
+    {
+        return $this->amount;
+    }
+
+    public function negate()
+    {
+        return new Money(-1 * $this->amount);
+    }
+
+    // ...
+}
+
+```
+vim MoneyTest.php
+```
+<?php
+class MoneyTest extends PHPUnit_Framework_TestCase
+{
+    // ...
+
+    public function testCanBeNegated()
+    {
+        // Arrange
+        $a = new Money(1);
+
+        // Act
+        $b = $a->negate();
+
+        // Assert
+        $this->assertEquals(-1, $b->getAmount());
+    }
+
+    // ...
+}
+```
+
+运行测试
+phpunit --bootstrap Money.php MoneyTest
+
+20.打包
 rm -rf /etc/udev/rules.d/70-persistent-net.rules
 exit
 exit
@@ -438,7 +524,7 @@ vagrant package --output centos65lnmprmmyii2.box
 #最后的压缩包在这个位置: /Users/michaeldu/Documents/vagrant/development/centos65lnmprmm.box
 #到此box就制作结束了, 下面是使用
 
-19.使用
+21.使用
 vagrant box add --name centos65lnmprmm centos65lnmprmm.box
 vagrant box --list
 mkdir maxwelldu
@@ -447,8 +533,7 @@ mkdir www
 vagrant init centos65lnmprmm
 vim Vagrantfile
 ```
-config.vm.network "public_network", ip: "192.168.31.98"
- config.vm.synced_folder "./www", "/data/www/maxwelldu", create:true, owner:"vagrant", group:"vagrant"
+config.vm.network "public_network", ip: '192.168.31.98', bridge: 'en0: Wi-Fi (AirPort)'
 ```
 vagrant up
 1
@@ -478,6 +563,7 @@ server {
         }
 }
 ```
+ln -Fs /vagrant/www/ /data/www/maxwelldu
 service nginx restart
 #本地配置host, maxwelldu.io指向192.168.31.98, 然后在www目录下面写index.php脚本, 在本地就可以通过maxwelldu.io/index.php进行访问了
 vim /data/www/test_memcached.php
@@ -498,7 +584,7 @@ http://192.168.31.98/moadmin.php
 http://192.168.31.98/advanced/frontend/web/
 http://192.168.31.98/advanced/backend/web/index.php?r=site%2Flogin
 
-#20.分享到网上
+#22.分享到网上
 #访问https://atlas.hashicorp.com/vagrant
 #点击Create a Vagrant Box With the Web UI
 #写上名称, Create box, 上传本地的.box
